@@ -71,6 +71,7 @@
 					struct VertexInput {
 					@location(0) pos: vec2f
 				};
+				@group(0) @binding(0) var<storage> angle: array<f32>;
 
 				struct VertexOutput {
 					@builtin(position) pos: vec4f,
@@ -82,7 +83,7 @@
 						fn vertexMain(input: VertexInput) -> VertexOutput  {
 							
 							var output: VertexOutput;
-  						output.pos = vec4f(input.pos, 0, 1);;
+  						output.pos = vec4f(input.pos.x, input.pos.y, 0, 1);
 							return output;
 						}
 
@@ -92,12 +93,92 @@
 						}
 					`
 				});
+				const WORKGROUP_SIZE = 1;
+
+				// Create an array representing the active state of each cell.
+			const angle = new Float32Array(1);
+			
+			angle[0] = 0;
+
+			
+			// Create a storage buffer to hold the cell state.
+			const angleStorage = device.createBuffer({
+				label: "Cell State",
+				size: angle.byteLength,
+				usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
+			});
+			const angle_out = new Float32Array(1);
+			
+			angle_out[0] = 0;
+
+			
+			// Create a storage buffer to hold the cell state.
+			const angleOutStorage = device.createBuffer({
+				label: "Cell State",
+				size: angle_out.byteLength,
+				usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
+			});
+			device.queue.writeBuffer(angleStorage, 0, angle);
+			device.queue.writeBuffer(angleOutStorage, 0, angle_out)
+				const simulationShaderModule = device.createShaderModule({
+					label: "Game of Life simulation shader",
+					code: `
+					@group(0) @binding(0) var<storage> angle: array<f32>;
+					@group(0) @binding(1) var<storage, read_write> angle_out: array<f32>;
+						@compute
+						@workgroup_size(${WORKGROUP_SIZE}, ${WORKGROUP_SIZE})
+						fn computeMain() {
+							angle_out[0] = angle[0]+3.14/10;
+						}`
+				});
 
 
+				// Create the bind group layout and pipeline layout.
+		const bindGroupLayout = device.createBindGroupLayout({
+			label: "Cell Bind Group Layout",
+			entries: [{
+				binding: 0,
+			visibility: GPUShaderStage.VERTEX | GPUShaderStage.COMPUTE,
+			buffer: { type: "read-only-storage"} // Cell state input buffer
+			}, {
+				binding: 1,
+				visibility: GPUShaderStage.COMPUTE,
+				buffer: { type: "storage"} // Cell state output buffer
+			}]
+		});
+		const bindGroups = [
+  device.createBindGroup({
+    label: "Cell renderer bind group A",
+    layout: bindGroupLayout, // Updated Line
+    entries: [{
+      binding: 0,
+      resource: { buffer: angleStorage }
+    }, {
+      binding: 1, // New Entry
+      resource: { buffer: angleOutStorage }
+    }],
+  }),
+  device.createBindGroup({
+    label: "Cell renderer bind group B",
+    layout: bindGroupLayout, // Updated Line
+
+    entries: [{
+      binding: 0,
+      resource: { buffer: angleOutStorage }
+    }, {
+      binding: 1, // New Entry
+      resource: { buffer: angleStorage }
+    }],
+  }),
+];
+		const pipelineLayout = device.createPipelineLayout({
+  label: "Cell Pipeline Layout",
+  bindGroupLayouts: [ bindGroupLayout ],
+});
 
 				const cellPipeline = device.createRenderPipeline({
 					label: "Cell pipeline",
-					layout: "auto",
+					layout: pipelineLayout,
 					vertex: {
 						module: cellShaderModule,
 						entryPoint: "vertexMain",
@@ -111,20 +192,56 @@
 						}]
 					}
 				});
+				const UPDATE_INTERVAL = 200; // Update every 200ms (5 times/sec)
+let step = 0; // Track how many simulation steps have been run
 
-				const encoder = device.createCommandEncoder();
-				const pass = encoder.beginRenderPass({
-  colorAttachments: [{
-     view: context.getCurrentTexture().createView(),
-     loadOp: "clear",
-     storeOp: "store",
-  }]
+const simulationPipeline = device.createComputePipeline({
+  label: "Simulation pipeline",
+  layout: pipelineLayout,
+  compute: {
+    module: simulationShaderModule,
+    entryPoint: "computeMain",
+  }
 });
-				pass.setPipeline(cellPipeline);
-				pass.setVertexBuffer(0, vertexBuffer);
-				pass.draw(vertices.length / 2); // 6 vertices
-				pass.end()
-				device.queue.submit([encoder.finish()]);
+
+function updateGrid() {
+		step++; // Increment the step count
+		
+		// Start a render pass 
+		const encoder = device.createCommandEncoder();
+		const computePass = encoder.beginComputePass();
+
+		
+
+	computePass.setPipeline(simulationPipeline);
+	computePass.setBindGroup(0, bindGroups[step % 2]);
+
+	const workgroupCount = 1;
+	computePass.dispatchWorkgroups(workgroupCount, workgroupCount);
+
+	computePass.end();
+		const pass = encoder.beginRenderPass({
+			colorAttachments: [{
+				view: context.getCurrentTexture().createView(),
+				loadOp: "clear",
+				clearValue: { r: 0, g: 0, b: 0.4, a: 1.0 },
+				storeOp: "store",
+			}]
+		});
+
+		// Draw the grid.
+		pass.setPipeline(cellPipeline);
+		pass.setBindGroup(0, bindGroups[step % 2]); // Updated!
+		pass.setVertexBuffer(0, vertexBuffer);
+		pass.draw(vertices.length / 2);
+
+		// End the render pass and submit the command buffer
+		pass.end();
+		device.queue.submit([encoder.finish()]);
+	}
+
+	// Schedule updateGrid() to run repeatedly
+	setInterval(updateGrid, UPDATE_INTERVAL);
   
     </script>
   </body>
