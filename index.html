@@ -120,12 +120,12 @@
 					`
 				});
 				const WORKGROUP_SIZE = 64;
-				const BALL_COUNT = 100;
+				const BALL_COUNT = 1000;
 				// Array representing the x,y coordinates and  x y speed vector of balls
 
 				const ballStateArray = new Float32Array(BALL_COUNT*4);
 				for(let i = 0; i < BALL_COUNT*4; i++){
-					ballStateArray[i] = Math.random() * 2 - 1;
+					ballStateArray[i] = (Math.random() * 2 - 1)/10;
 				}
 
 
@@ -152,43 +152,54 @@
 
 device.queue.writeBuffer(ballStateStorage[0], 0, ballStateArray);
 
+const G = 0.0001;
+const dt = 0.02;
 const simulationShaderModule = device.createShaderModule({
         label: "Life simulation shader",
         code: 
 				`
           @group(0) @binding(0) var<storage> ballStateIn: array<f32>;
           @group(0) @binding(1) var<storage, read_write> ballStateOut: array<f32>;
-
-          fn calculateNewCoordinates(thisBall: u32, otherBall: u32) -> u32 {
-						return 3;
-          }
-
-
-
-
-          @compute @workgroup_size(${WORKGROUP_SIZE}, 1)
+          @compute @workgroup_size(${WORKGROUP_SIZE})
           fn computeMain(@builtin(global_invocation_id) cell: vec3u) {
             // Determine how many active neighbors this cell has.
             var ballNumber = cell.x;
             var BALL_COUNT = u32(${BALL_COUNT});
-            
-			var newX = ballStateOut[ballNumber*4] + ballStateOut[ballNumber*4+2] * 0.002;
-			var newY = ballStateOut[ballNumber*4+1] + ballStateOut[ballNumber*4+3] * 0.002;
-			if(newX>=1 || newX<=-1){
-				ballStateOut[ballNumber*4+2] = -1*ballStateOut[ballNumber*4+2];
-			}
-			if(newY>=1 || newY<=-1){
-				ballStateOut[ballNumber*4+3] = -1*ballStateOut[ballNumber*4+3];
-			}
-			ballStateOut[ballNumber*4] += ballStateOut[ballNumber*4+2] * 0.002;
-            ballStateOut[ballNumber*4+1] += ballStateOut[ballNumber*4+3] * 0.002;
-			for(var i = u32(0);i<BALL_COUNT;i++)
+						ballStateOut[ballNumber*4+0] = ballStateIn[ballNumber*4+0];
+						ballStateOut[ballNumber*4+1] = ballStateIn[ballNumber*4+1];
+						ballStateOut[ballNumber*4+2] = ballStateIn[ballNumber*4+2];
+						ballStateOut[ballNumber*4+3] = ballStateIn[ballNumber*4+3];
+
+						let pos =  vec2f(ballStateIn[ballNumber*4], ballStateIn[ballNumber*4+1]);
+
+            for(var i = u32(0);i<BALL_COUNT;i++)
             {
                 //We dont want to calculate the force with the ball itself
                 if(i==ballNumber){continue;}
-                calculateNewCoordinates(ballNumber,i);
-            }
+
+								let r = vec2f(ballStateIn[i*4], ballStateIn[i*4+1]) - pos;
+
+								var r_squared = r.x*r.x+r.y*r.y;
+								if(r_squared < 0.001) {r_squared = 0.001;}
+								let num = ${G}/r_squared;
+
+								let acc = normalize(r) * num * ${dt};
+
+								ballStateOut[ballNumber*4+2] += acc.x;
+								ballStateOut[ballNumber*4+3] += acc.y;
+							}
+							var newX = ballStateOut[ballNumber*4] + ballStateOut[ballNumber*4+2] * ${dt};
+							var newY = ballStateOut[ballNumber*4+1] + ballStateOut[ballNumber*4+3] * ${dt};
+							if(newX>=1 || newX<=-1){
+								ballStateOut[ballNumber*4+2] = -1*ballStateOut[ballNumber*4+2];
+							}
+							if(newY>=1 || newY<=-1){
+								ballStateOut[ballNumber*4+3] = -1*ballStateOut[ballNumber*4+3];
+							}
+							ballStateOut[ballNumber*4] += ballStateOut[ballNumber*4+2] * ${dt};
+							ballStateOut[ballNumber*4+1] += ballStateOut[ballNumber*4+3] * ${dt};	
           }
+					
 					`
         
       });
