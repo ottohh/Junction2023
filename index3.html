@@ -9,26 +9,36 @@
 
 
 	Simulate: <input type="checkbox" id="simulate" checked="true" />
-  <div>count: <input type="number" id="count" min="0" max="1000000" value="50"></div>
+  <div>count: <input type="number" id="count" min="0" max="1000000" value="1000"></div>
   <canvas id="canvas" width="512" height="512"></canvas>
+	<div id="render"></div>
+	<div id="physics"></div>
 
 
   <script type="module">
+		let reset = false;
 
 		const q = document.getElementById("simulate")
 
+		const renderText = document.getElementById("render");
+		const physicsText = document.getElementById("physics");
+
+
     const countElem = document.querySelector('#count');
+    let BALL_COUNT = 1000;
 
     function getCount() {
       BALL_COUNT = Math.min(1000000000, parseInt(countElem.value));
+			reset = true
+			setTimeout(main, 100)
   }
   
   countElem.addEventListener('input', getCount);
 
-    let BALL_COUNT = 50;
 
 
-		const render_times = [];
+		function main(){
+			const render_times = [];
 		const physics_times = [];
 
     const ballStateArray = new Float32Array(new SharedArrayBuffer(BALL_COUNT * 4 * 4));
@@ -112,7 +122,7 @@
           // Center of the circle
     
     // Radius of the circle
-    float radius = 2.0;
+    float radius = 0.5;
     vec4 grad = ud_model*vec4(gl_FragCoord.xy, 0.0, 1.0);
 
   
@@ -125,7 +135,7 @@
 							}
 
 
-    gl_FragColor = vec4(1.0, 0.0, 0.0, 1.0);
+    gl_FragColor = vec4(1.0, 1.0, 1.0, 1.0);
 
         }
       `;
@@ -154,6 +164,10 @@
 
 
     async function render(now, first=false) {
+			if(reset){
+				reset = false
+				return
+			}
 			if(!q.checked && !first){
 				setTimeout(render, 100)
 				return;
@@ -226,7 +240,7 @@
       const colorLocation = gl.getUniformLocation(program, "u_color");
 
       // Clear the canvas
-      gl.clearColor(0.0, 0.0, 0.0, 1.0);
+      gl.clearColor(0.0, 0, 0.4, 1.0);
       gl.clear(gl.COLOR_BUFFER_BIT);
 
 
@@ -267,10 +281,13 @@
 				console.log(`Average time spent in render loop ${render_times.reduce((avg, val) => avg + val/render_times.length, 0)} ms`)
 				console.log(`Average time spent in physics loop ${physics_times.reduce((avg, val) => avg + val/physics_times.length, 0)} ms`)
 			}
+			renderText.innerHTML = `Average time in render loop(last 120 frames): ${render_times.slice(-120).reduce((avg, val) => avg + val/render_times.length, 0).toFixed(4)} ms`;
+			physicsText.innerHTML = `Average time in physics loop(last 120 frames): ${physics_times.slice(-120).reduce((avg, val) => avg + val/physics_times.length, 0).toFixed(4)} ms`;
 			requestAnimationFrame(render);
     }
     requestAnimationFrame((n) => render(n, true));
-
+		}
+		main()
 
   </script>
 </body>

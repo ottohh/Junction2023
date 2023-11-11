@@ -65,10 +65,11 @@ const calculateNextStep = (ballStateIn, ballStateOut, ballRadius, start, end, G=
 			var newX = ballStateOut[ballNumber*4] + ballStateOut[ballNumber*4+2] * dt;
 			var newY = ballStateOut[ballNumber*4+1] + ballStateOut[ballNumber*4+3] * dt;
 			
-			if(newX+ballRadius[ballNumber]>=1 || newX- ballRadius[ballNumber]<=-1){
+			const radius = 0.02;
+			if(newX+radius>=1 || newX- radius<=-1){
 				ballStateOut[ballNumber*4+2] = -1*ballStateOut[ballNumber*4+2];
 			}
-			if(newY+ballRadius[ballNumber]>=1 || newY- ballRadius[ballNumber]<=-1){
+			if(newY+radius>=1 || newY- radius<=-1){
 				ballStateOut[ballNumber*4+3] = -1*ballStateOut[ballNumber*4+3];
 			}
 			ballStateOut[ballNumber*4] += ballStateOut[ballNumber*4+2] * dt;

@@ -32,35 +32,59 @@
 		}
 	  </style>
 	<div style ="display:flex">
-		<div>
-			<p>webGPU compute shaderi generoitu gravitaatio</p>
-			<canvas width="512" height="512"></canvas>
-		</div>
-		<div>
-			<p>javascript webWorker generoitu gravitaatio</p>
-			<iframe src="index3.html" width="512" height="512"></iframe>
-		</div>
-	</div>
-    <script type="module">
-				const adapter = await navigator.gpu?.requestAdapter();
-				const device = await adapter?.requestDevice();
-				if (!device) {
-					throw new Error()
-				}
+		<div style="display:flex">
+			<div>
+					<p>N-body simulation using WebGPU</p>
+					Simulate: <input type="checkbox" id="simulate" checked="true" />
+					<div>count: <input type="number" id="count" min="0" max="1000000" value="1000"></div>
 
-				// Get a WebGPU context from the canvas and configure it
-				const canvas = document.querySelector('canvas');
-				const context = canvas.getContext('webgpu');
-				const canvasFormat = navigator.gpu.getPreferredCanvasFormat();
-				context.configure({
-					device: device,
-					format: canvasFormat,
-				})
-				const presentationFormat = navigator.gpu.getPreferredCanvasFormat();
-				context.configure({
-					device,
-					format: presentationFormat,
-				});
+					<canvas width="512" height="512"></canvas>
+					<div id="time"></div>
+			</div>
+			<div>
+					<p>N-body simulation using WebWorker(physics) and WebGL</p>
+					<iframe src="index3.html" width="550" height="650"></iframe>
+			</div>
+	</div>
+	<script type="module">
+
+			var BALL_COUNT = 1000;
+			const tElem = document.getElementById("time")
+
+			let reset = false
+			const countElem = document.querySelector('#count');
+
+			const simulate = document.getElementById("simulate")
+
+			function getCount() {
+				console.log("count changed")
+					BALL_COUNT = Math.min(1000000000, parseInt(countElem.value));
+					reset = true;
+					setTimeout(main, 100)
+
+			}
+
+			countElem.addEventListener('input', getCount);
+			const adapter = await navigator.gpu?.requestAdapter();
+				const device = await adapter?.requestDevice();
+			if (!device) {
+				throw new Error()
+			}
+
+			// Get a WebGPU context from the canvas and configure it
+			const canvas = document.querySelector('canvas');
+			const context = canvas.getContext('webgpu');
+			const canvasFormat = navigator.gpu.getPreferredCanvasFormat();
+			context.configure({
+				device: device,
+				format: canvasFormat,
+			})
+			const presentationFormat = navigator.gpu.getPreferredCanvasFormat();
+			context.configure({
+				device,
+				format: presentationFormat,
+			});
+				async function main(){
 								
 				const vertices = new Float32Array([
 				//   X,    Y,
@@ -90,7 +114,6 @@
 					shaderLocation: 0, // Position, see vertex shader
 				}],
 			};
-				const BALL_COUNT = 6000;
 			const cellShaderModule = device.createShaderModule({
 					label: 'Cell shader',
 					code: `
@@ -147,7 +170,7 @@
 				const ballRadiusArray = new Float32Array(BALL_COUNT);
 				for(let i = 0; i < BALL_COUNT*4; i++){
 					ballStateArray[i] = (Math.random() * 2 - 1)/2;
-					ballRadiusArray[i] = (Math.random()+0.0001)/50
+					ballRadiusArray[i] = 0.02
 				}
 
 
@@ -193,7 +216,6 @@ const simulationShaderModule = device.createShaderModule({
 				  @group(0) @binding(2) var<storage> ballRadius: array<f32, ${BALL_COUNT}>;
           @compute @workgroup_size(${WORKGROUP_SIZE})
           fn computeMain(@builtin(global_invocation_id) cell: vec3u) {
-            // Determine how many active neighbors this cell has.
             var ballNumber = cell.x;
             var BALL_COUNT = u32(${BALL_COUNT});
 						ballStateOut[ballNumber*4+0] = ballStateIn[ballNumber*4+0];
@@ -320,9 +342,22 @@ const simulationPipeline = device.createComputePipeline({
     entryPoint: "computeMain",
   }
 });
+const updates = []
 
-function updateGrid() {
+function updateGrid(first=false) {
+		if(reset){
+			for(const buffer of ballStateStorage){
+				buffer.destroy()
+			}
+			reset = false
+			return
+		}
+		if(!simulate.checked && !first){
+				setTimeout(updateGrid, 100)
+				return;
+			}
 		step++; // Increment the step count
+		const now = performance.now()
 		
 		// Start a render pass 
 		const encoder = device.createCommandEncoder();
@@ -355,11 +390,15 @@ function updateGrid() {
 		// End the render pass and submit the command buffer
 		pass.end();
 		device.queue.submit([encoder.finish()]);
+		updates.push(performance.now()-now)
+		tElem.innerHTML = `Average time in loop(last 120 frames, CPU main thread): ${updates.slice(-120).reduce((avg, val) => avg + val/updates.length, 0).toFixed(4)} ms`;
+	requestAnimationFrame(() => updateGrid(false))
 	}
 
-	// Schedule updateGrid() to run repeatedly
-	setInterval(updateGrid, UPDATE_INTERVAL);
-  
+	requestAnimationFrame(() => updateGrid(true))
+				}
+				main()
+
     </script>
   </body>
 </html>
