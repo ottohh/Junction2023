@@ -97,7 +97,7 @@
 						@vertex
 						fn vertexMain(input: VertexInput) -> VertexOutput  {
 							let pos1 = vec2f(ballStateIn[4*input.instance], ballStateIn[4*input.instance+1]);
-							let radius = 0.006;
+							let radius = 0.02;
 							let anotherpos = vec2f(input.pos.x*radius - radius / 2, input.pos.y*radius - radius / 2);
 							var output: VertexOutput;
 							output.pos = vec4f((anotherpos+pos1), 0, 1);
@@ -120,7 +120,7 @@
 					`
 				});
 				const WORKGROUP_SIZE = 64;
-				const BALL_COUNT = 2000000;
+				const BALL_COUNT = 100;
 				// Array representing the x,y coordinates and  x y speed vector of balls
 
 				const ballStateArray = new Float32Array(BALL_COUNT*4);
@@ -172,9 +172,17 @@ const simulationShaderModule = device.createShaderModule({
             var ballNumber = cell.x;
             var BALL_COUNT = u32(${BALL_COUNT});
             
-            ballStateOut[ballNumber*4] += ballStateOut[ballNumber*4+2] * 0.002;
+			var newX = ballStateOut[ballNumber*4] + ballStateOut[ballNumber*4+2] * 0.002;
+			var newY = ballStateOut[ballNumber*4+1] + ballStateOut[ballNumber*4+3] * 0.002;
+			if(newX>=1 || newX<=-1){
+				ballStateOut[ballNumber*4+2] = -1*ballStateOut[ballNumber*4+2];
+			}
+			if(newY>=1 || newY<=-1){
+				ballStateOut[ballNumber*4+3] = -1*ballStateOut[ballNumber*4+3];
+			}
+			ballStateOut[ballNumber*4] += ballStateOut[ballNumber*4+2] * 0.002;
             ballStateOut[ballNumber*4+1] += ballStateOut[ballNumber*4+3] * 0.002;
-            for(var i = u32(0);i<BALL_COUNT;i++)
+			for(var i = u32(0);i<BALL_COUNT;i++)
             {
                 //We dont want to calculate the force with the ball itself
                 if(i==ballNumber){continue;}
