@@ -33,11 +33,11 @@
 	  </style>
 	<div style ="display:flex">
 		<div>
-			<p>webGPU compute shaderi generoitu gravitaatio</p>
+			<p>Gravitation generated using webGPU</p>
 			<canvas width="512" height="512"></canvas>
 		</div>
 		<div>
-			<p>javascript webWorker generoitu gravitaatio</p>
+			<p>Gravitation generated using WebGL</p>
 			<iframe src="index3.html" width="512" height="512"></iframe>
 		</div>
 	</div>
@@ -131,9 +131,10 @@
 
 						@fragment
 						fn fragmentMain(input: FragInput) -> @location(0) vec4f {
-							let vec = vec2f(input.pos.x/ 512 - 0.5, (input.pos.y / 512 - 0.5)*-1)* 2 - input.position;
-							let dist = vec.x*vec.x+vec.y*vec.y;
-							if(dist > (input.radius/2)*(input.radius/2)) {
+							// scale the position from (0, 512) to (-1, 1)
+							let vec = vec2f(input.pos.x-256, (input.pos.y - 256)*-1)/256 - input.position;
+							let dist = sqrt(vec.x*vec.x+vec.y*vec.y);
+							if(dist > (input.radius/2)) {
 							  discard;
 							}
 							return vec4f(1, 1, 1, 1);
@@ -221,6 +222,7 @@ const simulationShaderModule = device.createShaderModule({
 							}
 							var newX = ballStateOut[ballNumber*4] + ballStateOut[ballNumber*4+2] * ${dt};
 							var newY = ballStateOut[ballNumber*4+1] + ballStateOut[ballNumber*4+3] * ${dt};
+							// Check that the ball doesn't go outside of the borders
 							if(newX+ballRadius[ballNumber]>=1 || newX- ballRadius[ballNumber]<=-1){
 								ballStateOut[ballNumber*4+2] = -1*ballStateOut[ballNumber*4+2];
 							}
