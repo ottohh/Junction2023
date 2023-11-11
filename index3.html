@@ -14,7 +14,7 @@
 
 
 
-    const BALL_COUNT = 3000;
+    const BALL_COUNT = 1000;
 
 		const render_times = [];
 		const physics_times = [];
@@ -153,7 +153,7 @@
       await waitPromise(workerPool)
       steps++;
 
-			physics_times.push(now3-performance.now())
+			physics_times.push(performance.now()-now3)
 			const now2 = performance.now()
 
 
