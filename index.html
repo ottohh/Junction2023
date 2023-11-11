@@ -97,7 +97,7 @@
 						@vertex
 						fn vertexMain(input: VertexInput) -> VertexOutput  {
 							let pos1 = vec2f(ballStateIn[4*input.instance], ballStateIn[4*input.instance+1]);
-							let radius = 0.02;
+							let radius = 0.006;
 							let anotherpos = vec2f(input.pos.x*radius - radius / 2, input.pos.y*radius - radius / 2);
 							var output: VertexOutput;
 							output.pos = vec4f((anotherpos+pos1), 0, 1);
@@ -119,13 +119,14 @@
 						}
 					`
 				});
-				const WORKGROUP_SIZE = 1;
-				const BALL_COUNT = 2;
+				const WORKGROUP_SIZE = 64;
+				const BALL_COUNT = 2000000;
 				// Array representing the x,y coordinates and  x y speed vector of balls
 
 				const ballStateArray = new Float32Array(BALL_COUNT*4);
-				ballStateArray[0]=0.2;
-				ballStateArray[1]=0.2;
+				for(let i = 0; i < BALL_COUNT*4; i++){
+					ballStateArray[i] = Math.random() * 2 - 1;
+				}
 
 
 				// Create two storage buffers to hold the cell state.
@@ -150,6 +151,7 @@
 				// the storage buffer.
 
 device.queue.writeBuffer(ballStateStorage[0], 0, ballStateArray);
+
 const simulationShaderModule = device.createShaderModule({
         label: "Life simulation shader",
         code: 
@@ -158,7 +160,6 @@ const simulationShaderModule = device.createShaderModule({
           @group(0) @binding(1) var<storage, read_write> ballStateOut: array<f32>;
 
           fn calculateNewCoordinates(thisBall: u32, otherBall: u32) -> u32 {
-            ballStateOut[thisBall*4] += ballStateIn[thisBall*4] * 0.01;
 						return 3;
           }
 
@@ -171,6 +172,8 @@ const simulationShaderModule = device.createShaderModule({
             var ballNumber = cell.x;
             var BALL_COUNT = u32(${BALL_COUNT});
             
+            ballStateOut[ballNumber*4] += ballStateOut[ballNumber*4+2] * 0.002;
+            ballStateOut[ballNumber*4+1] += ballStateOut[ballNumber*4+3] * 0.002;
             for(var i = u32(0);i<BALL_COUNT;i++)
             {
                 //We dont want to calculate the force with the ball itself
