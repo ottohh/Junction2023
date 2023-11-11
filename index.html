@@ -160,6 +160,20 @@ const simulationShaderModule = device.createShaderModule({
 				`
           @group(0) @binding(0) var<storage> ballStateIn: array<f32>;
           @group(0) @binding(1) var<storage, read_write> ballStateOut: array<f32>;
+
+
+		fn ChangeDirectionIfCollidedWithWall(newX: f32, newY :f32, ballNumber: u32) -> u32{
+		
+		if(newX>=1 || newX<=-1){
+			ballStateOut[ballNumber*4+2] = -1*ballStateOut[ballNumber*4+2];
+		}
+		if(newY>=1 || newY<=-1){
+			ballStateOut[ballNumber*4+3] = -1*ballStateOut[ballNumber*4+3];
+		}
+		return 0;
+		}
+
+
           @compute @workgroup_size(${WORKGROUP_SIZE})
           fn computeMain(@builtin(global_invocation_id) cell: vec3u) {
             // Determine how many active neighbors this cell has.
@@ -190,12 +204,8 @@ const simulationShaderModule = device.createShaderModule({
 							}
 							var newX = ballStateOut[ballNumber*4] + ballStateOut[ballNumber*4+2] * ${dt};
 							var newY = ballStateOut[ballNumber*4+1] + ballStateOut[ballNumber*4+3] * ${dt};
-							if(newX>=1 || newX<=-1){
-								ballStateOut[ballNumber*4+2] = -1*ballStateOut[ballNumber*4+2];
-							}
-							if(newY>=1 || newY<=-1){
-								ballStateOut[ballNumber*4+3] = -1*ballStateOut[ballNumber*4+3];
-							}
+
+							ChangeDirectionIfCollidedWithWall(newX,newY,ballNumber);
 							ballStateOut[ballNumber*4] += ballStateOut[ballNumber*4+2] * ${dt};
 							ballStateOut[ballNumber*4+1] += ballStateOut[ballNumber*4+3] * ${dt};	
           }
