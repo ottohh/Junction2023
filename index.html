@@ -31,10 +31,16 @@
 		  margin-left: 10px;
 		}
 	  </style>
-	<p>webGPU compute shaderi generoitu gravitaatio</p>
-	<canvas width="512" height="512"></canvas>
-	<p>javascript webWorker generoitu gravitaatio</p>
-	<iframe src="index3.html" width="512" height="512"></iframe>
+	<div style ="display:flex">
+		<div>
+			<p>webGPU compute shaderi generoitu gravitaatio</p>
+			<canvas width="512" height="512"></canvas>
+		</div>
+		<div>
+			<p>javascript webWorker generoitu gravitaatio</p>
+			<iframe src="index3.html" width="512" height="512"></iframe>
+		</div>
+	</div>
     <script type="module">
 				const adapter = await navigator.gpu?.requestAdapter();
 				const device = await adapter?.requestDevice();
