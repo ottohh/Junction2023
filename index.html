@@ -92,31 +92,37 @@
 				struct VertexOutput {
 					@builtin(position) pos: vec4f,
 					@location(0) position: vec2f,
+					@location(1) radius: f32,
+					@location(2) instance: f32,
 				};
 				struct FragInput {
 					@builtin(position) pos: vec4f,
 					@location(0) position: vec2f,
+					@location(1) radius: f32,
+					@location(2) instance: f32,
 				};
 						@vertex
 						fn vertexMain(input: VertexInput) -> VertexOutput  {
-							let pos1 = vec2f(-0.5, 0);
-							let scale = 0.5;
-							let anotherpos = vec2f(input.pos.x*scale-scale/2, input.pos.y*scale-scale/2);
+							let pos1 = vec2f(f32(input.instance) % 3 / 3 - 0.2, floor(f32(input.instance) / 3)/1.7-0.5);
+							let radius = 0.5;
+							let anotherpos = vec2f(input.pos.x*radius - radius / 2, input.pos.y*radius - radius / 2);
 							var output: VertexOutput;
 							output.pos = vec4f((anotherpos+pos1), 0, 1);
 							output.position = pos1;
+							output.radius = radius;
+							output.instance = f32(input.instance);
 							return output;
 						}
 
 
 						@fragment
 						fn fragmentMain(input: FragInput) -> @location(0) vec4f {
-							let vec = vec2f(input.pos.xy / 512 - 0.5)* 2 + input.position;
+							let vec = vec2f(input.pos.x/ 512 - 0.5, (input.pos.y / 512 - 0.5)*-1)* 2 - input.position;
 							let dist = vec.x*vec.x+vec.y*vec.y;
-							if(dist > 0.5) {
-								return vec4f(0, 0, 0, 0);
+							if(dist > (input.radius/2)*(input.radius/2)) {
+							  discard;
 							}
-							return vec4f(1, 0.5, 0, 1);
+							return vec4f(1, input.instance / 9, input.instance / 9, 1);
 						}
 					`
 				});
@@ -260,7 +266,7 @@ function updateGrid() {
 		pass.setPipeline(cellPipeline);
 		pass.setBindGroup(0, bindGroups[step % 2]); // Updated!
 		pass.setVertexBuffer(0, vertexBuffer);
-		pass.draw(vertices.length / 2, 100);
+		pass.draw(vertices.length / 2, 9);
 
 		// End the render pass and submit the command buffer
 		pass.end();
