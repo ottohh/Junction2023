@@ -6,7 +6,35 @@
     <title>WebGPU Life</title>
   </head>
   <body>
-    <canvas width="512" height="512"></canvas>
+	<style>
+		body {
+		  margin: 0;
+		  display: flex;
+		  flex-direction: column;
+		  align-items: center;
+		  justify-content: center;
+		  text-align: center;
+		}
+	
+		p {
+		  margin: 0;
+		  padding: 10px;
+		  font-size: 18px;
+		}
+	
+		canvas, iframe {
+		  margin-top: 10px;
+		  border: 1px solid #ccc;
+		}
+	
+		iframe {
+		  margin-left: 10px;
+		}
+	  </style>
+	<p>webGPU compute shaderi generoitu gravitaatio</p>
+	<canvas width="512" height="512"></canvas>
+	<p>javascript webWorker generoitu gravitaatio</p>
+	<iframe src="index3.html" width="512" height="512"></iframe>
     <script type="module">
 				const adapter = await navigator.gpu?.requestAdapter();
 				const device = await adapter?.requestDevice();
