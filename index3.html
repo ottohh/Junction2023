@@ -6,16 +6,27 @@
 </head>
 
 <body>
-  <canvas id="canvas" width="400" height="400"></canvas>
 
 
-	Simulate: <input type="checkbox" id="simulate" />
+	Simulate: <input type="checkbox" id="simulate" checked="true" />
+  <div>count: <input type="number" id="count" min="0" max="1000000" value="50"></div>
+  <canvas id="canvas" width="512" height="512"></canvas>
+
 
   <script type="module">
 
 		const q = document.getElementById("simulate")
 
-    const BALL_COUNT = 10;
+    const countElem = document.querySelector('#count');
+
+    function getCount() {
+      BALL_COUNT = Math.min(1000000000, parseInt(countElem.value));
+  }
+  
+  countElem.addEventListener('input', getCount);
+
+    let BALL_COUNT = 50;
+
 
 		const render_times = [];
 		const physics_times = [];
@@ -79,8 +90,14 @@
         attribute vec2 a_position;
         uniform mat4 u_model;
 
+        varying vec2 center;
+
+        varying mat4 ud_model;
         void main() {
+          center = a_position;
           gl_Position = u_model * vec4(a_position, 0.0, 1.0);
+          ud_model = u_model;
+
         }
       `;
 
@@ -88,9 +105,28 @@
     const fragmentShaderSource = `
         precision mediump float;
         uniform vec4 u_color;
+        varying mat4 ud_model;
+        varying vec2 center;
 
         void main() {
-          gl_FragColor = u_color;
+          // Center of the circle
+    
+    // Radius of the circle
+    float radius = 2.0;
+    vec4 grad = ud_model*vec4(gl_FragCoord.xy, 0.0, 1.0);
+
+  
+    vec2 vec = vec2(grad.x/ 500.0 - 0.5, (grad.y / 500.0 - 0.5)*-1.0)* 2.0 - center*40.0;
+
+    float dist = vec.x*vec.x+vec.y*vec.y;
+
+    if(dist > (radius/2.0)*(radius/2.0)) {
+							  discard;
+							}
+
+
+    gl_FragColor = vec4(1.0, 0.0, 0.0, 1.0);
+
         }
       `;
 
@@ -164,10 +200,10 @@
 
       // Define square vertex data
       const squareVertices = new Float32Array([
-        -0.1, -0.1,
-        0.1, -0.1,
-        0.1, 0.1,
-        -0.1, 0.1,
+        -1, -1,
+        1, -1,
+        1, 1,
+        -1, 1,
       ]);
 
 

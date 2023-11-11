@@ -82,5 +82,6 @@ onmessage = function(e) {
 //	console.time("Worker #" + data.name)
 	calculateNextStep(data.dataIn, data.dataOut, data.ballRadius, data.start, data.end, 0.2, 0.02)
 //	console.timeEnd("Worker #" + data.name)
+
 	this.postMessage("")
 }
