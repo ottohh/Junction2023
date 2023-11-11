@@ -39,8 +39,12 @@
 					-0.8,  0.8,
 				]);*/
 
-				const SUBDIVISIONS = 100;
+				const SECTORS = 10;
+
+				const SUBDIVISIONS = 5;
+				
 				const vertices = new Float32Array(SUBDIVISIONS*6)
+				/*
 				for(let i = 0; i < SUBDIVISIONS; i++){
 					vertices[6*i] = 0;
 					vertices[6*i+1] = 0;
@@ -48,7 +52,7 @@
 					vertices[6*i+3] = Math.sin(2*Math.PI/SUBDIVISIONS*i);
 					vertices[6*i+4] = Math.cos(2*Math.PI/SUBDIVISIONS*(i+1));
 					vertices[6*i+5] = Math.sin(2*Math.PI/SUBDIVISIONS*(i+1));
-				}
+				}*/
 
 				const vertexBuffer = device.createBuffer({
 				label: "Cell vertices",
@@ -69,27 +73,41 @@
 					label: 'Cell shader',
 					code: `
 					struct VertexInput {
-					@location(0) pos: vec2f
+					@location(0) pos: vec2f,
+					@builtin(instance_index) instance: u32,
+					@builtin(vertex_index) vertexIndex : u32
 				};
 				@group(0) @binding(0) var<storage> angle: array<f32>;
 
 				struct VertexOutput {
 					@builtin(position) pos: vec4f,
+					@location(0) @interpolate(flat) fi: f32,
 				};
 				struct FragInput {
 					@builtin(position) pos: vec4f,
+					@location(0) @interpolate(flat) fi: f32,
 				};
 						@vertex
 						fn vertexMain(input: VertexInput) -> VertexOutput  {
 							
 							var output: VertexOutput;
-  						output.pos = vec4f(input.pos.x, input.pos.y, 0, 1);
+							let index = f32(input.vertexIndex);
+							let i = f32(input.instance);
+							let d = floor(index / 3);
+							if(input.vertexIndex % 3 == 0){
+								output.pos = vec4f(0, 0, 0, 1);
+							} else if (input.vertexIndex % 3 == 1){
+								output.pos = vec4f(cos(2*3.14/100*i+d*2*3.14/100/5+angle[0]), sin(2*3.14/100*i+d*2*3.14/100/5+angle[0]), 0, 1);
+							} else {
+								output.pos = vec4f(cos(2*3.14/100*i+(d+1)*2*3.14/100/5+angle[0]), sin(2*3.14/100*i+(d+1)*2*3.14/100/5+angle[0]), 0, 1);
+							}
+							output.fi = i;
 							return output;
 						}
 
 						@fragment
 						fn fragmentMain(input: FragInput) -> @location(0) vec4f {
-							return vec4f(input.pos.x/500, input.pos.y/500, 0, 1);
+							return vec4f(input.fi % 4 / 4,input.fi % 100 / 100, input.fi % 13, 1);
 						}
 					`
 				});
@@ -100,7 +118,7 @@
 			
 			angle[0] = 0;
 
-			
+[]			
 			// Create a storage buffer to hold the cell state.
 			const angleStorage = device.createBuffer({
 				label: "Cell State",
@@ -128,7 +146,7 @@
 						@compute
 						@workgroup_size(${WORKGROUP_SIZE}, ${WORKGROUP_SIZE})
 						fn computeMain() {
-							angle_out[0] = angle[0]+3.14/10;
+							angle_out[0] = angle[0]+3.14/100;
 						}`
 				});
 
@@ -192,7 +210,7 @@
 						}]
 					}
 				});
-				const UPDATE_INTERVAL = 200; // Update every 200ms (5 times/sec)
+				const UPDATE_INTERVAL = 1000/60; // Update every 200ms (5 times/sec)
 let step = 0; // Track how many simulation steps have been run
 
 const simulationPipeline = device.createComputePipeline({
@@ -233,7 +251,7 @@ function updateGrid() {
 		pass.setPipeline(cellPipeline);
 		pass.setBindGroup(0, bindGroups[step % 2]); // Updated!
 		pass.setVertexBuffer(0, vertexBuffer);
-		pass.draw(vertices.length / 2);
+		pass.draw(vertices.length / 2, 100);
 
 		// End the render pass and submit the command buffer
 		pass.end();
