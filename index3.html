@@ -9,12 +9,13 @@
   <canvas id="canvas" width="400" height="400"></canvas>
 
 
+	Simulate: <input type="checkbox" id="simulate" />
 
   <script type="module">
 
+		const q = document.getElementById("simulate")
 
-
-    const BALL_COUNT = 1000;
+    const BALL_COUNT = 10;
 
 		const render_times = [];
 		const physics_times = [];
@@ -25,8 +26,8 @@
 
     const ballRadiusArray = new Float32Array(new SharedArrayBuffer(BALL_COUNT * 4));
     for (let i = 0; i < BALL_COUNT * 4; i++) {
-      ballRadiusArray[i] = (Math.random() + 0.0001);
-			ballStateArray[i] = (Math.random() + 0.0001) * 2 - 1;
+      ballRadiusArray[i] = (Math.random() + 0.0001)/20;
+			ballStateArray[i] = (Math.random() + 0.0001) * 1.8 - 0.9;
     }
 
     if (!window.Worker) {
@@ -61,7 +62,6 @@
 
 
     let steps = 0;
-
 
 
 
@@ -117,7 +117,11 @@
     var deltaTime = 0;
 
 
-    async function render(now) {
+    async function render(now, first=false) {
+			if(!q.checked && !first){
+				setTimeout(render, 100)
+				return;
+			}
       now *= 0.001; // convert to seconds
       deltaTime = now - then;
       then = now;
@@ -127,7 +131,6 @@
       const perWorker = Math.floor(BALL_COUNT / workerPool.length)
 
 			const now3 = performance.now()
-
       for (let i = 0; i < workerPool.length; i++) {
         if (i == workerPool.length - 1) {
           workerPool[i].postMessage({
@@ -228,9 +231,9 @@
 				console.log(`Average time spent in render loop ${render_times.reduce((avg, val) => avg + val/render_times.length, 0)} ms`)
 				console.log(`Average time spent in physics loop ${physics_times.reduce((avg, val) => avg + val/physics_times.length, 0)} ms`)
 			}
-      requestAnimationFrame(render);
+			requestAnimationFrame(render);
     }
-    requestAnimationFrame(render);
+    requestAnimationFrame((n) => render(n, true));
 
 
   </script>

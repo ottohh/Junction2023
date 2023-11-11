@@ -1,4 +1,4 @@
-var MAX_VALUE = 1000000;
+
 
 var Vector = function(a, b) {
     var self = this;
@@ -61,7 +61,7 @@ const calculateNextStep = (ballStateIn, ballStateOut, ballRadius, start, end, G=
 				ballStateOut[ballNumber*4+2] += acc.x;
 				ballStateOut[ballNumber*4+3] += acc.y;
 			}
-			/*
+			
 			var newX = ballStateOut[ballNumber*4] + ballStateOut[ballNumber*4+2] * dt;
 			var newY = ballStateOut[ballNumber*4+1] + ballStateOut[ballNumber*4+3] * dt;
 			
@@ -70,7 +70,7 @@ const calculateNextStep = (ballStateIn, ballStateOut, ballRadius, start, end, G=
 			}
 			if(newY+ballRadius[ballNumber]>=1 || newY- ballRadius[ballNumber]<=-1){
 				ballStateOut[ballNumber*4+3] = -1*ballStateOut[ballNumber*4+3];
-			}*/
+			}
 			ballStateOut[ballNumber*4] += ballStateOut[ballNumber*4+2] * dt;
 			ballStateOut[ballNumber*4+1] += ballStateOut[ballNumber*4+3] * dt;	
 	}
@@ -79,6 +79,8 @@ const calculateNextStep = (ballStateIn, ballStateOut, ballRadius, start, end, G=
 
 onmessage = function(e) {
 	const data = e.data;
-	calculateNextStep(data.dataIn, data.dataOut, data.ballRadius, data.start, data.end, 0.001, 0.02)
+//	console.time("Worker #" + data.name)
+	calculateNextStep(data.dataIn, data.dataOut, data.ballRadius, data.start, data.end, 0.2, 0.02)
+//	console.timeEnd("Worker #" + data.name)
 	this.postMessage("")
 }
