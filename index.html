@@ -398,7 +398,8 @@
 				let step = 0; // Track how many simulation steps have been run
 				const updates = []
 
-				function updateGrid(now) {
+
+				function render(now) {
 					updateFPS(now);
 
 					//When ball Count changes we need to reset the buffers 
@@ -410,7 +411,7 @@
 						return
 					}
 					if (!simulate.checked) {
-						setTimeout(updateGrid, 100)
+						setTimeout(render, 100)
 						return;
 					}
 
@@ -464,10 +465,10 @@
 
 					updates.push(performance.now() - now)
 					tElem.innerHTML = `Average time in loop(last 120 frames, CPU main thread): ${updates.slice(-120).reduce((avg, val) => avg + val / updates.length, 0).toFixed(4)} ms`;
-					requestAnimationFrame(updateGrid);
+					requestAnimationFrame(render);
 				}
 
-				requestAnimationFrame(() => updateGrid(true))
+				requestAnimationFrame(render)
 			}
 			main()
 
