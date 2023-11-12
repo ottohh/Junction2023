@@ -1,5 +1,5 @@
 # Junction2023 WebGPU vs WebGL, in N-body simulation
-
+(!https://victorious-pond-04b52a903.4.azurestaticapps.net/)
 # We took part in Veikkaus's challenge and wanted to see how we could utilize the power of GPU in browser.
 
 Firstly we had to come up with compute intensive task where we could compare the performances of CPU and GPU.
