@@ -1,80 +1,85 @@
 <!doctype html>
 
 <html>
-  <head>
-    <meta charset="utf-8">
-    <title>WebGPU Life</title>
-  </head>
-  <body>
+
+<head>
+	<meta charset="utf-8">
+	<title>WebGPU Life</title>
+</head>
+
+<body>
 	<style>
 		body {
-		  margin: 0;
-		  display: flex;
-		  flex-direction: column;
-		  align-items: center;
-		  justify-content: center;
-		  text-align: center;
+			margin: 0;
+			display: flex;
+			flex-direction: column;
+			align-items: center;
+			justify-content: center;
+			text-align: center;
 		}
-	
+
 		p {
-		  margin: 0;
-		  padding: 10px;
-		  font-size: 18px;
+			margin: 0;
+			padding: 10px;
+			font-size: 18px;
 		}
-	
-		canvas, iframe {
-		  margin-top: 10px;
-		  border: 0;
-		}
-	
+
+
+		canvas,
 		iframe {
-		  margin-left: 10px;
+			margin-top: 10px;
+			border: 0;
 		}
+
+
 		#fpsCounter {
-            width:40px;
-            display: inline-block;
-            color: white;
-            background: rgba(0, 0, 0, 0.5);
-            padding: 5px;
-            border-radius: 5px;
-            font-family: Arial, sans-serif;
-        }
-	  </style>
-	<div style ="display:flex">
+			width: 40px;
+			display: inline-block;
+			color: white;
+			background: rgba(0, 0, 0, 0.5);
+			padding: 5px;
+			border-radius: 5px;
+			font-family: Arial, sans-serif;
+		}
+	</style>
+	<div style="display:flex">
 		<div style="display:flex">
 			<div>
 				<p>N-body simulation using WebGPU</p>
 				<div>
-				<div style="display: inline;">
-					Simulate: <input type="checkbox" id="simulate" checked="true" />
-					count: <input type="number" id="count" min="0" max="1000000" value="1000">
-				
-				<div id="fpsCounter">FPS: 0</div>
+					<div style="display: inline;">
+						Simulate: <input type="checkbox" id="simulate" checked="true" />
+						count: <input type="number" id="count" min="0" max="1000000" value="1000">
+
+						<div id="fpsCounter">FPS: 0</div>
+					</div>
 				</div>
-				</div>
+
 				<canvas width="512" height="512"></canvas>
 				<div id="time"></div>
 			</div>
 			<div>
-					<p>N-body simulation using WebWorker(physics) and WebGL</p>
-					<iframe src="webgl.html" width="550" height="650"></iframe>
+				<p>N-body simulation using WebWorker(physics) and WebGL</p>
+				<iframe src="webgl.html" width="550" height="650"></iframe>
 			</div>
-	</div>
-	<script type="module">
-		let lastFrameTime = 0;
-        let frameCount = 0;
-        let fps = 0;
-        let lastFPSCheck = performance.now();
 
-        function updateFPS(now) {
-            frameCount++;
-            if (now - lastFPSCheck >= 1000) {
-                fps = frameCount;
-                frameCount = 0;
-                lastFPSCheck = now;
-                document.getElementById('fpsCounter').innerText = `FPS: ${fps}`;
-            }
-        }
+		</div>
+		<script type="module">
+			let lastFrameTime = 0;
+			let frameCount = 0;
+			let fps = 0;
+			let lastFPSCheck = performance.now();
+
+
+			function updateFPS(now) {
+				frameCount++;
+				if (now - lastFPSCheck >= 1000) {
+					fps = frameCount;
+					frameCount = 0;
+					lastFPSCheck = now;
+					document.getElementById('fpsCounter').innerText = `FPS: ${fps}`;
+				}
+			}
 			var BALL_COUNT = 1000;
 			const tElem = document.getElementById("time")
 
@@ -85,18 +90,25 @@
 
 			function getCount() {
 				console.log("count changed")
-					BALL_COUNT = Math.min(1000000000, parseInt(countElem.value));
-					reset = true;
-					setTimeout(main, 100)
+				BALL_COUNT = Math.min(1000000000, parseInt(countElem.value));
+				reset = true;
+				setTimeout(main, 100)
 
 			}
 
 			countElem.addEventListener('input', getCount);
 			const adapter = await navigator.gpu?.requestAdapter();
-				const device = await adapter?.requestDevice();
+			const device = await adapter?.requestDevice();
 			if (!device) {
 				throw new Error()
 			}
+
+			//Simulation constants
+			const G = 0.1;
+			const UPDATE_INTERVAL = 1000 / 60;
+			const dt = UPDATE_INTERVAL / 1000;
+
+
 
 			// Get a WebGPU context from the canvas and configure it
 			const canvas = document.querySelector('canvas');
@@ -111,37 +123,39 @@
 				device,
 				format: presentationFormat,
 			});
-				async function main(){
-								
+			async function main() {
+
+				const WORKGROUP_SIZE = 64;
+
 				const vertices = new Float32Array([
-				//   X,    Y,
-					0,  0, // Triangle 1 (Blue)
-					1,  1,
-					0,  1,
+					//   X,    Y,
+					0, 0, // Triangle 1 (Blue)
+					1, 1,
+					0, 1,
 
 					0, 0, // Triangle 2 (Red)
-					1,  0,
-					1,  1,
+					1, 0,
+					1, 1,
 				]);
 
 				const vertexBuffer = device.createBuffer({
-				label: "Cell vertices",
-				size: vertices.byteLength,
-				usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
-			});
+					label: "Cell vertices",
+					size: vertices.byteLength,
+					usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
+				});
 
 
-			device.queue.writeBuffer(vertexBuffer, /*bufferOffset=*/0, vertices);
-				
-			const vertexBufferLayout = {
-				arrayStride: 8,
-				attributes: [{
-					format: "float32x2",
-					offset: 0,
-					shaderLocation: 0, // Position, see vertex shader
-				}],
-			};
-			const cellShaderModule = device.createShaderModule({
+				device.queue.writeBuffer(vertexBuffer, /*bufferOffset=*/0, vertices);
+
+				const vertexBufferLayout = {
+					arrayStride: 8,
+					attributes: [{
+						format: "float32x2",
+						offset: 0,
+						shaderLocation: 0, // Position, see vertex shader
+					}],
+				};
+				const cellShaderModule = device.createShaderModule({
 					label: 'Cell shader',
 					code: `
 					struct VertexInput {
@@ -191,54 +205,12 @@
 						}
 					`
 				});
-				const WORKGROUP_SIZE = 64;
-				// Array representing the x,y coordinates and  x y speed vector of balls
-
-				const ballStateArray = new Float32Array(BALL_COUNT*4);
-				const ballRadiusArray = new Float32Array(BALL_COUNT);
-				for(let i = 0; i < BALL_COUNT*4; i++){
-					ballStateArray[i] = (Math.random() * 2 - 1)/2;
-					ballRadiusArray[i] = 0.02
-				}
 
 
-
-				// Create two storage buffers to hold the cell state.
-				const ballStateStorage = [
-					device.createBuffer({
-						label: "Ball State A",
-						size: ballStateArray.byteLength,
-						usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
-					}),
-					device.createBuffer({
-						label: "Ball State B",
-						size: ballStateArray.byteLength,
-						usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
-					})
-				];
-				const radiusStorage = 
-					device.createBuffer({
-						size: ballRadiusArray.byteLength,
-						usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
-					})
-
-				device.queue.writeBuffer(radiusStorage, 0, ballRadiusArray)
-
-
-
-				device.queue.writeBuffer(ballStateStorage[1], 0, ballStateArray);
-				// Set each cell to a random state, then copy the JavaScript array into
-				// the storage buffer.
-
-device.queue.writeBuffer(ballStateStorage[0], 0, ballStateArray);
-
-const G = 0.1;
-const UPDATE_INTERVAL = 1000/60;
-const dt = UPDATE_INTERVAL/1000;
-const simulationShaderModule = device.createShaderModule({
-        label: "Life simulation shader",
-        code: 
-				`
+				const simulationShaderModule = device.createShaderModule({
+					label: "N-body speed and position shader",
+					code:
+						`
           @group(0) @binding(0) var<storage> ballStateIn: array<f32>;
           @group(0) @binding(1) var<storage, read_write> ballStateOut: array<f32>;
 				  @group(0) @binding(2) var<storage> ballRadius: array<f32, ${BALL_COUNT}>;
@@ -271,6 +243,8 @@ const simulationShaderModule = device.createShaderModule({
 							}
 							var newX = ballStateOut[ballNumber*4] + ballStateOut[ballNumber*4+2] * ${dt};
 							var newY = ballStateOut[ballNumber*4+1] + ballStateOut[ballNumber*4+3] * ${dt};
+
+
 							// Check that the ball doesn't go outside of the borders
 							if(newX+ballRadius[ballNumber]>=1 || newX- ballRadius[ballNumber]<=-1){
 								ballStateOut[ballNumber*4+2] = -1*ballStateOut[ballNumber*4+2];
@@ -278,72 +252,120 @@ const simulationShaderModule = device.createShaderModule({
 							if(newY+ballRadius[ballNumber]>=1 || newY- ballRadius[ballNumber]<=-1){
 								ballStateOut[ballNumber*4+3] = -1*ballStateOut[ballNumber*4+3];
 							}
+
+
+
 							ballStateOut[ballNumber*4] += ballStateOut[ballNumber*4+2] * ${dt};
 							ballStateOut[ballNumber*4+1] += ballStateOut[ballNumber*4+3] * ${dt};	
           }
 					
 					`
-        
-      });
+
+				});
+
+
+
+				// Array representing the x,y coordinates and  x y speed vector of balls
+				const ballStateArray = new Float32Array(BALL_COUNT * 4);
+				const ballRadiusArray = new Float32Array(BALL_COUNT);
+
+				// Create two storage buffers to hold the positions and speeds.
+				const ballStateStorage = [
+					device.createBuffer({
+						label: "Ball State A",
+						size: ballStateArray.byteLength,
+						usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
+					}),
+					device.createBuffer({
+						label: "Ball State B",
+						size: ballStateArray.byteLength,
+						usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
+					})
+				];
+
+				// Create storage to hold radiuses
+				const radiusStorage =
+					device.createBuffer({
+						size: ballRadiusArray.byteLength,
+						usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
+					})
+
+
+				device.queue.writeBuffer(ballStateStorage[0], 0, ballStateArray);
+
+
+				// Set each circle to a random position, then copy the JavaScript array into
+				// the storage buffer.
+
+				for (let i = 0; i < BALL_COUNT * 4; i++) {
+					ballStateArray[i] = (Math.random() * 2 - 1) / 2;
+					ballRadiusArray[i] = 0.02
+				}
+
+				device.queue.writeBuffer(radiusStorage, 0, ballRadiusArray)
+				device.queue.writeBuffer(ballStateStorage[1], 0, ballStateArray);
+
+
+
 
 
 				const bindGroupLayout = device.createBindGroupLayout({
-        label: "Cell Bind Group Layout",
-        entries: [{
-          binding: 0,
-          visibility: GPUShaderStage.VERTEX | GPUShaderStage.COMPUTE,
-          buffer: { type: "read-only-storage"} // balls state input buffer
-        },{
-          binding: 1,
-          visibility: GPUShaderStage.COMPUTE,
-          buffer: { type: "storage"} // Ball state output buffer 
-        }, {
-					binding: 2,
-					visibility: GPUShaderStage.COMPUTE | GPUShaderStage.VERTEX,
-					buffer: { type: "read-only-storage" }
-				}]
-      });
-			const bindGroups = [
-        device.createBindGroup({
-          label: "Cell renderer bind group A with cellSpeeds",
-          layout: bindGroupLayout,
-          entries: [{
-            binding: 0,
-            resource: { buffer: ballStateStorage[0] }
-
-          }, {
-            binding: 1,
-            resource: { buffer: ballStateStorage[1] }
-
-          },
-					{
+					label: "Cell Bind Group Layout",
+					entries: [{
+						binding: 0,
+						visibility: GPUShaderStage.VERTEX | GPUShaderStage.COMPUTE,
+						buffer: { type: "read-only-storage" } // balls state input buffer
+					}, {
+						binding: 1,
+						visibility: GPUShaderStage.COMPUTE,
+						buffer: { type: "storage" } // Ball state output buffer 
+					}, {
 						binding: 2,
-						resource: { buffer: radiusStorage }
+						visibility: GPUShaderStage.COMPUTE | GPUShaderStage.VERTEX,
+						buffer: { type: "read-only-storage" }
 					}]
-        }),
+				});
+				const bindGroups = [
+					device.createBindGroup({
+						label: "Cell renderer bind group A with cellSpeeds",
+						layout: bindGroupLayout,
+						entries: [{
+							binding: 0,
+							resource: { buffer: ballStateStorage[0] }
 
-        device.createBindGroup({
-          label: "Cell renderer bind group B with cellSpeeds",
-          layout: bindGroupLayout,
-          entries: [{
-            binding: 0,
-            resource: { buffer: ballStateStorage[1] }
+						}, {
+							binding: 1,
+							resource: { buffer: ballStateStorage[1] }
 
-          }, {
-            binding: 1,
-            resource: { buffer: ballStateStorage[0] }
+						},
+						{
+							binding: 2,
+							resource: { buffer: radiusStorage }
+						}]
+					}),
 
-          },
-					{
-						binding: 2,
-						resource: { buffer: radiusStorage }
-					}],
-        }),
-      ];
-		const pipelineLayout = device.createPipelineLayout({
-  label: "Cell Pipeline Layout",
-  bindGroupLayouts: [ bindGroupLayout ],
-});
+					device.createBindGroup({
+						label: "Cell renderer bind group B with cellSpeeds",
+						layout: bindGroupLayout,
+						entries: [{
+							binding: 0,
+							resource: { buffer: ballStateStorage[1] }
+
+						}, {
+							binding: 1,
+							resource: { buffer: ballStateStorage[0] }
+
+						},
+						{
+							binding: 2,
+							resource: { buffer: radiusStorage }
+						}],
+					}),
+				];
+				const pipelineLayout = device.createPipelineLayout({
+					label: "Cell Pipeline Layout",
+					bindGroupLayouts: [bindGroupLayout],
+				});
 
 				const cellPipeline = device.createRenderPipeline({
 					label: "Cell pipeline",
@@ -361,75 +383,95 @@ const simulationShaderModule = device.createShaderModule({
 						}]
 					}
 				});
-let step = 0; // Track how many simulation steps have been run
 
-const simulationPipeline = device.createComputePipeline({
-  label: "Simulation pipeline",
-  layout: pipelineLayout,
-  compute: {
-    module: simulationShaderModule,
-    entryPoint: "computeMain",
-  }
-});
-const updates = []
+				const simulationPipeline = device.createComputePipeline({
+					label: "Simulation pipeline",
+					layout: pipelineLayout,
+					compute: {
+						module: simulationShaderModule,
+						entryPoint: "computeMain",
+					}
+				});
 
-function updateGrid(now) {
-	updateFPS(now);
-		if(reset){
-			for(const buffer of ballStateStorage){
-				buffer.destroy()
-			}
-			reset = false
-			return
-		}
-		if(!simulate.checked && !first){
-				setTimeout(updateGrid, 100)
-				return;
-			}
-		step++; // Increment the step count
-		now = performance.now()
-		
-		// Start a render pass 
-		const encoder = device.createCommandEncoder();
-		const computePass = encoder.beginComputePass();
 
-		
 
-	computePass.setPipeline(simulationPipeline);
-	computePass.setBindGroup(0, bindGroups[step % 2]);
+				let step = 0; // Track how many simulation steps have been run
+				const updates = []
 
-	const workgroupCount = Math.ceil(BALL_COUNT / WORKGROUP_SIZE);
-	computePass.dispatchWorkgroups(workgroupCount, 1);
+				function updateGrid(now) {
+					updateFPS(now);
 
-	computePass.end();
-		const pass = encoder.beginRenderPass({
-			colorAttachments: [{
-				view: context.getCurrentTexture().createView(),
-				loadOp: "clear",
-				clearValue: { r: 0, g: 0, b: 0.4, a: 1.0 },
-				storeOp: "store",
-			}]
-		});
+					//When ball Count changes we need to reset the buffers 
+					if (reset) {
+						for (const buffer of ballStateStorage) {
+							buffer.destroy()
+						}
+						reset = false
+						return
+					}
+					if (!simulate.checked && !first) {
+						setTimeout(updateGrid, 100)
+						return;
+					}
 
-		// Draw the grid.
-		pass.setPipeline(cellPipeline);
-		pass.setBindGroup(0, bindGroups[step % 2]); // Updated!
-		pass.setVertexBuffer(0, vertexBuffer);
-		pass.draw(vertices.length / 2, BALL_COUNT);
+					step++; // Increment the step count
+					now = performance.now()
 
-		// End the render pass and submit the command buffer
-		pass.end();
-		device.queue.submit([encoder.finish()]);
-		updates.push(performance.now()-now)
-		tElem.innerHTML = `Average time in loop(last 120 frames, CPU main thread): ${updates.slice(-120).reduce((avg, val) => avg + val/updates.length, 0).toFixed(4)} ms`;
-		//	requestAnimationFrame(() => updateGrid(now))
-		requestAnimationFrame(updateGrid);
-	}
 
-	requestAnimationFrame(() => updateGrid(true))
+
+
+					// Start a compute pass to calculate new coordinates and speeds for every ball
+					const encoder = device.createCommandEncoder();
+					const computePass = encoder.beginComputePass();
+
+
+
+
+					computePass.setPipeline(simulationPipeline);
+					computePass.setBindGroup(0, bindGroups[step % 2]);
+
+					const workgroupCount = Math.ceil(BALL_COUNT / WORKGROUP_SIZE);
+					computePass.dispatchWorkgroups(workgroupCount, 1);
+
+					//End compute pass
+					computePass.end();
+
+
+
+
+
+					//Start render pass to render the balls to newly calculated positions
+					const pass = encoder.beginRenderPass({
+						colorAttachments: [{
+							view: context.getCurrentTexture().createView(),
+							loadOp: "clear",
+							clearValue: { r: 0, g: 0, b: 0.4, a: 1.0 },
+							storeOp: "store",
+						}]
+					});
+
+
+					pass.setPipeline(cellPipeline);
+					pass.setBindGroup(0, bindGroups[step % 2]); // Updated!
+					pass.setVertexBuffer(0, vertexBuffer);
+					pass.draw(vertices.length / 2, BALL_COUNT);
+					// End the render pass and submit the command buffer
+					pass.end();
+					device.queue.submit([encoder.finish()]);
+
+
+
+
+					updates.push(performance.now() - now)
+					tElem.innerHTML = `Average time in loop(last 120 frames, CPU main thread): ${updates.slice(-120).reduce((avg, val) => avg + val / updates.length, 0).toFixed(4)} ms`;
+					requestAnimationFrame(updateGrid);
 				}
-				main()
 
-    </script>
-  </body>
+				requestAnimationFrame(() => updateGrid(true))
+			}
+			main()
+
+		</script>
+</body>
+
 </html>
