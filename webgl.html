@@ -6,16 +6,45 @@
 </head>
 
 <body>
-
-
-	Simulate: <input type="checkbox" id="simulate" checked="true" />
-  <div>count: <input type="number" id="count" min="0" max="1000000" value="1000"></div>
+<style>
+  #fpsCounter {
+            width:40px;
+            display: inline-block;
+            color: white;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 5px;
+            border-radius: 5px;
+            font-family: Arial, sans-serif;
+        }
+</style>
+<div style="display:flex; justify-content: center;">
+  <div style="display: inline";>
+    Simulate: <input type="checkbox" id="simulate" checked="true" />
+    count: <input type="number" id="count" min="0" max="1000000" value="1000">
+    <div id="fpsCounter">FPS: 0</div>
+  </div>
+</div>
   <canvas id="canvas" width="512" height="512"></canvas>
 	<div id="render"></div>
 	<div id="physics"></div>
 
 
   <script type="module">
+    let lastFrameTime = 0;
+    let frameCount = 0;
+    let fps = 0;
+    let lastFPSCheck = performance.now();
+		function main(){
+      function updateFPS(now) {
+            frameCount++;
+            if (now - lastFPSCheck >= 1000) {
+                fps = frameCount;
+                frameCount = 0;
+                lastFPSCheck = now;
+                document.getElementById('fpsCounter').innerText = `FPS: ${fps}`;
+            }
+        }
+
 		let reset = false;
 
 		const q = document.getElementById("simulate")
@@ -36,8 +65,6 @@
   countElem.addEventListener('input', getCount);
 
 
-
-		function main(){
 			const render_times = [];
 		const physics_times = [];
 
@@ -164,6 +191,7 @@
 
 
     async function render(now, first=false) {
+      updateFPS(now);
 			if(reset){
 				reset = false
 				return

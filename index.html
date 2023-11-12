@@ -24,22 +24,36 @@
 	
 		canvas, iframe {
 		  margin-top: 10px;
-		  border: 1px solid #ccc;
+		  border: 0;
 		}
 	
 		iframe {
 		  margin-left: 10px;
 		}
+		#fpsCounter {
+            width:40px;
+            display: inline-block;
+            color: white;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 5px;
+            border-radius: 5px;
+            font-family: Arial, sans-serif;
+        }
 	  </style>
 	<div style ="display:flex">
 		<div style="display:flex">
 			<div>
-					<p>N-body simulation using WebGPU</p>
+				<p>N-body simulation using WebGPU</p>
+				<div>
+				<div style="display: inline;">
 					Simulate: <input type="checkbox" id="simulate" checked="true" />
-					<div>count: <input type="number" id="count" min="0" max="1000000" value="1000"></div>
-
-					<canvas width="512" height="512"></canvas>
-					<div id="time"></div>
+					count: <input type="number" id="count" min="0" max="1000000" value="1000">
+				
+				<div id="fpsCounter">FPS: 0</div>
+				</div>
+				</div>
+				<canvas width="512" height="512"></canvas>
+				<div id="time"></div>
 			</div>
 			<div>
 					<p>N-body simulation using WebWorker(physics) and WebGL</p>
@@ -47,7 +61,20 @@
 			</div>
 	</div>
 	<script type="module">
+		let lastFrameTime = 0;
+        let frameCount = 0;
+        let fps = 0;
+        let lastFPSCheck = performance.now();
 
+        function updateFPS(now) {
+            frameCount++;
+            if (now - lastFPSCheck >= 1000) {
+                fps = frameCount;
+                frameCount = 0;
+                lastFPSCheck = now;
+                document.getElementById('fpsCounter').innerText = `FPS: ${fps}`;
+            }
+        }
 			var BALL_COUNT = 1000;
 			const tElem = document.getElementById("time")
 
@@ -346,7 +373,8 @@ const simulationPipeline = device.createComputePipeline({
 });
 const updates = []
 
-function updateGrid(first=false) {
+function updateGrid(now) {
+	updateFPS(now);
 		if(reset){
 			for(const buffer of ballStateStorage){
 				buffer.destroy()
@@ -359,7 +387,7 @@ function updateGrid(first=false) {
 				return;
 			}
 		step++; // Increment the step count
-		const now = performance.now()
+		now = performance.now()
 		
 		// Start a render pass 
 		const encoder = device.createCommandEncoder();
@@ -394,7 +422,8 @@ function updateGrid(first=false) {
 		device.queue.submit([encoder.finish()]);
 		updates.push(performance.now()-now)
 		tElem.innerHTML = `Average time in loop(last 120 frames, CPU main thread): ${updates.slice(-120).reduce((avg, val) => avg + val/updates.length, 0).toFixed(4)} ms`;
-	requestAnimationFrame(() => updateGrid(false))
+		//	requestAnimationFrame(() => updateGrid(now))
+		requestAnimationFrame(updateGrid);
 	}
 
 	requestAnimationFrame(() => updateGrid(true))
