@@ -34,7 +34,6 @@
     let frameCount = 0;
     let fps = 0;
     let lastFPSCheck = performance.now();
-		function main(){
       function updateFPS(now) {
             frameCount++;
             if (now - lastFPSCheck >= 1000) {
@@ -64,6 +63,7 @@
   
   countElem.addEventListener('input', getCount);
 
+  function main(){
 
 			const render_times = [];
 		const physics_times = [];
