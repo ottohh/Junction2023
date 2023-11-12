@@ -21,6 +21,7 @@
   <div style="display: inline";>
     Simulate: <input type="checkbox" id="simulate" checked="true" />
     count: <input type="number" id="count" min="0" max="1000000" value="1000">
+    <button id="button">reset</button>
     <div id="fpsCounter">FPS: 0</div>
   </div>
 </div>
@@ -53,15 +54,17 @@
 
 
     const countElem = document.querySelector('#count');
+		const buttonElem = document.querySelector("#button")
+
     let BALL_COUNT = 1000;
 
-    function getCount() {
+    function handleButton() {
       BALL_COUNT = Math.min(1000000000, parseInt(countElem.value));
 			reset = true
 			setTimeout(main, 100)
   }
   
-  countElem.addEventListener('input', getCount);
+  buttonElem.addEventListener('click', handleButton);
 
   function main(){
 

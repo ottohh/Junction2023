@@ -50,6 +50,7 @@
 					<div style="display: inline;">
 						Simulate: <input type="checkbox" id="simulate" checked="true" />
 						count: <input type="number" id="count" min="0" max="1000000" value="1000">
+						<button id="button">reset</button>
 
 						<div id="fpsCounter">FPS: 0</div>
 					</div>
@@ -85,10 +86,11 @@
 
 			let reset = false
 			const countElem = document.querySelector('#count');
+			const buttonElem = document.querySelector("#button")
 
 			const simulate = document.getElementById("simulate")
 
-			function getCount() {
+			function handleButton() {
 				console.log("count changed")
 				BALL_COUNT = Math.min(1000000000, parseInt(countElem.value));
 				reset = true;
@@ -96,7 +98,7 @@
 
 			}
 
-			countElem.addEventListener('input', getCount);
+			buttonElem.addEventListener('click', handleButton);
 			const adapter = await navigator.gpu?.requestAdapter();
 			const device = await adapter?.requestDevice();
 			if (!device) {
@@ -474,5 +476,4 @@
 
 		</script>
 </body>
-
 </html>
